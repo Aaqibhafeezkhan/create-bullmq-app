@@ -34,6 +34,8 @@ jobs:
           npm run typecheck
           npm test
           npm run build
+          npm run new:queue -- resize-image
+          npm run typecheck
       - name: Smoke test API + worker with graceful shutdown
         working-directory: ../demo-svc
         env: { REDIS_URL: "redis://localhost:6379", LOG_LEVEL: warn }
@@ -49,6 +51,8 @@ jobs:
             [ "$STATE" = completed ] && break; sleep 0.5
           done
           echo "job $ID state=$STATE"; [ "$STATE" = completed ]
+          curl -fs localhost:3000/metrics | grep 'bullmq_jobs{queue="email",state="completed"} 1'
+          curl -fs localhost:3000/queues/email/failed
           kill -TERM $API $WORKER
           wait $API; wait $WORKER
           echo "both processes exited cleanly"

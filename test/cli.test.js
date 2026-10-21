@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { detectPm, scaffold, validName } from '../bin/index.js';
+import { detectPm, prompt, scaffold, validName } from '../bin/index.js';
 
 const tmp = () => mkdtempSync(join(tmpdir(), 'cba-'));
 
@@ -57,4 +57,23 @@ test('CLI end to end with --help and without install', () => {
   assert.ok(existsSync(join(cwd, 'svc', 'src', 'jobs', 'email.ts')));
   const missing = spawnSync(process.execPath, [bin], { encoding: 'utf8' });
   assert.equal(missing.status, 1);
+});
+
+test('interactive prompt uses answers and defaults', async () => {
+  const answers = ['Bad Name!', 'svc-a', 'n', '', 'no', 'y'];
+  const asked = [];
+  const r = await prompt(async (q) => (asked.push(q), answers.shift()));
+  assert.deepEqual(r, { dir: 'svc-a', docker: false, ci: true, install: false, git: true });
+  assert.equal(asked.length, 6);
+  const d = await prompt(async () => '', { dir: 'x', docker: false });
+  assert.deepEqual(d, { dir: 'x', docker: false, ci: true, install: true, git: true });
+});
+
+test('--yes without a dir uses the default name', () => {
+  const bin = new URL('../bin/index.js', import.meta.url).pathname;
+  const cwd = tmp();
+  const r = spawnSync(process.execPath, [bin, '-y', '--no-install', '--no-git'], { cwd, encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  assert.ok(existsSync(join(cwd, 'my-bullmq-app', 'scripts', 'new-queue.mjs')));
+  assert.match(r.stdout, /new:queue/);
 });

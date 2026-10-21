@@ -3,12 +3,41 @@
   "version": "0.1.0",
   "description": "Scaffold a production-ready BullMQ + TypeScript service: API, workers, graceful shutdown, health checks, Docker.",
   "type": "module",
-  "bin": { "create-bullmq-app": "bin/index.js" },
-  "files": ["bin", "template"],
-  "engines": { "node": ">=20" },
-  "scripts": { "test": "node --test test/*.test.js" },
-  "keywords": ["bullmq", "redis", "queue", "worker", "starter", "template", "typescript", "hono", "create"],
+  "bin": {
+    "create-bullmq-app": "bin/index.js"
+  },
+  "files": [
+    "bin",
+    "template",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "keywords": [
+    "bullmq",
+    "redis",
+    "queue",
+    "worker",
+    "starter",
+    "template",
+    "typescript",
+    "hono",
+    "create",
+    "prometheus",
+    "cron",
+    "job-queue",
+    "scaffold"
+  ],
   "author": "Krrish Kumar",
   "license": "MIT",
-  "repository": { "type": "git", "url": "git+https://github.com/Krrishkumar125/create-bullmq-app.git" }
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Krrishkumar125/create-bullmq-app.git"
+  },
+  "homepage": "https://github.com/Krrishkumar125/create-bullmq-app#readme",
+  "bugs": "https://github.com/Krrishkumar125/create-bullmq-app/issues"
 }

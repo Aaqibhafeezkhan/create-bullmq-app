@@ -1,11 +1,13 @@
 # create-bullmq-app
 
+[![npm](https://img.shields.io/npm/v/create-bullmq-app)](https://www.npmjs.com/package/create-bullmq-app)
 [![CI](https://github.com/Krrishkumar125/create-bullmq-app/actions/workflows/ci.yml/badge.svg)](https://github.com/Krrishkumar125/create-bullmq-app/actions/workflows/ci.yml)
 
 Scaffold a **production-ready BullMQ + TypeScript service** in one command: an HTTP API that validates and enqueues jobs, a separate worker process, health checks, graceful shutdown, Docker and CI that test against real Redis.
 
 ```bash
 npm create bullmq-app@latest my-service
+# or just `npm create bullmq-app@latest` and answer a few questions
 ```
 
 ## The problem
@@ -28,6 +30,11 @@ The [BullMQ "Going to production" guide](https://docs.bullmq.io/guide/going-to-p
 | **Worker** | separate process, concurrency from env, structured events for completed/failed/stalled |
 | **Graceful shutdown** | SIGINT/SIGTERM → readiness flips to 503 → HTTP server / workers drain → hard timeout |
 | **Health** | `/health/live` and `/health/ready` on both API and worker |
+| **Failed jobs / retry** | `GET /queues/:name/failed` (dead-letter view), `POST /jobs/:name/:id/retry`, `POST /queues/:name/retry-failed` |
+| **Metrics** | `GET /metrics` in Prometheus format (`bullmq_jobs{queue,state}`), no extra dependency |
+| **Cron jobs** | `schedule: { pattern, tz }` on a job, registered with `upsertJobScheduler` so N workers never duplicate it |
+| **Rate limits** | `limiter: { max, duration }` per queue, enforced across all workers |
+| **Admin auth** | set `ADMIN_TOKEN` to protect admin, metrics and retry routes with a bearer token |
 | **Idempotency** | optional `idempotencyKey` becomes a deterministic `jobId` |
 | **Safe defaults** | exponential backoff, attempts, bounded `removeOnComplete/Fail`, correct Redis options for producers vs workers, TLS via `rediss://` |
 | **Typed config** | Zod-validated env that fails fast with a readable list of errors |
@@ -35,12 +42,12 @@ The [BullMQ "Going to production" guide](https://docs.bullmq.io/guide/going-to-p
 | **Docker** | multi-stage non-root image, compose with Redis (`noeviction`, AOF), 2 worker replicas, `stop_grace_period` |
 | **Tests + CI** | Vitest unit tests plus integration tests against real Redis in GitHub Actions |
 
-Adding a queue = one file: copy `src/jobs/email.ts` (name, payload schema, id, processor) and register it in `src/jobs/index.ts`.
+Adding a queue = one command: `npm run new:queue -- resize-image` writes `src/jobs/resize-image.ts` (name, payload schema, id, processor) and registers it.
 
 ## Options
 
 ```
-npm create bullmq-app@latest <dir> [--no-docker] [--no-ci] [--no-install] [--no-git] [--pm npm|pnpm|yarn]
+npm create bullmq-app@latest [dir] [-y] [--no-docker] [--no-ci] [--no-install] [--no-git] [--pm npm|pnpm|yarn]
 ```
 
 ## Quickstart (generated project)
@@ -66,13 +73,12 @@ curl -X POST localhost:3000/jobs/email -H 'content-type: application/json' \
 | Idempotent enqueue | ✅ | — | — | documented |
 | Tested against real Redis in CI | ✅ | — | — | — |
 
-Bull Board pairs well with this: mount it in `src/app.ts` if you want a UI.
+Bull Board pairs well with this: mount it in `src/app.ts` if you want a UI (a `--dashboard` flag is on the roadmap).
 
 ## Roadmap
 
-- [ ] `--queue <name>` to generate the first queue with your own name
-- [ ] Optional Bull Board and Prometheus `/metrics`
-- [ ] Repeatable/cron jobs example and a dead-letter queue pattern
+- [x] Interactive setup, `new:queue` generator, Prometheus `/metrics`, cron + rate-limit examples, failed-job retry endpoints
+- [ ] Optional Bull Board UI (`--dashboard`)
 - [ ] Flow (parent/child) example
 - [ ] Express and Fastify flavours
 - [ ] OpenTelemetry tracing across producer → worker

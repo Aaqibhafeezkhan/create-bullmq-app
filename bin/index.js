@@ -4,11 +4,15 @@ import { cpSync, existsSync, readdirSync, readFileSync, renameSync, rmSync, writ
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import { createInterface } from 'node:readline/promises';
 
 const TEMPLATE = join(dirname(fileURLToPath(import.meta.url)), '..', 'template');
-const HELP = `Usage: npm create bullmq-app@latest <dir> [options]
+const HELP = `Usage: npm create bullmq-app@latest [dir] [options]
+
+Run without a directory in a terminal to answer a few questions instead.
 
 Options:
+  -y, --yes        accept defaults, never prompt (for CI and scripts)
   --no-docker      skip Dockerfile and docker-compose.yml
   --no-ci          skip the GitHub Actions workflow
   --no-install     do not install dependencies
@@ -56,12 +60,35 @@ export function scaffold(target, opts = {}) {
   return { name };
 }
 
+/** Ask the setup questions on a TTY. `ask` is injectable for tests. */
+export async function prompt(ask, defaults = {}) {
+  const yes = async (q, def) => {
+    const a = (await ask(`${q} (${def ? 'Y/n' : 'y/N'}) `)).trim().toLowerCase();
+    return a ? a.startsWith('y') : def;
+  };
+  let dir = defaults.dir;
+  while (!dir) {
+    dir = (await ask('Project name: (my-bullmq-app) ')).trim() || 'my-bullmq-app';
+    if (!validName(basename(dir).toLowerCase())) {
+      console.log('  Use lowercase letters, digits, - . _ ~');
+      dir = undefined;
+    }
+  }
+  return {
+    dir,
+    docker: await yes('Add Dockerfile + docker-compose?', defaults.docker ?? true),
+    ci: await yes('Add GitHub Actions CI?', defaults.ci ?? true),
+    install: await yes('Install dependencies now?', defaults.install ?? true),
+    git: await yes('Initialise a git repo?', defaults.git ?? true),
+  };
+}
+
 function run(cmd, args, cwd) {
   const r = spawnSync(cmd, args, { cwd, stdio: 'inherit', shell: process.platform === 'win32' });
   return r.status === 0;
 }
 
-function main(argv) {
+async function main(argv) {
   // Node 20's parseArgs has no allowNegative, so map --no-<flag> ourselves.
   const toggles = ['docker', 'ci', 'install', 'git'];
   const off = new Set(argv.filter((a) => toggles.some((t) => a === `--no-${t}`)).map((a) => a.slice(5)));
@@ -71,11 +98,23 @@ function main(argv) {
     options: {
       pm: { type: 'string' },
       help: { type: 'boolean', short: 'h' },
+      yes: { type: 'boolean', short: 'y' },
     },
   });
   for (const t of toggles) values[t] = !off.has(t);
   if (values.help) return void process.stdout.write(HELP);
-  const dir = positionals[0];
+  let dir = positionals[0];
+  if (!dir && !values.yes && process.stdin.isTTY && process.stdout.isTTY) {
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    try {
+      const answers = await prompt((q) => rl.question(q), { ...(off.size ? Object.fromEntries([...off].map((k) => [k, false])) : {}) });
+      dir = answers.dir;
+      Object.assign(values, { docker: answers.docker, ci: answers.ci, install: answers.install, git: answers.git });
+    } finally {
+      rl.close();
+    }
+  }
+  if (!dir && values.yes) dir = 'my-bullmq-app';
   if (!dir) {
     process.stderr.write(HELP);
     process.exitCode = 1;
@@ -99,14 +138,15 @@ function main(argv) {
   cp .env.example .env${values.docker ? '\n  docker compose up -d redis' : ''}${values.install ? '' : `\n  ${pm} install`}
   ${r} dev:api      # in one terminal
   ${r} dev:worker   # in another
+
+Add a queue:   ${r} new:queue -- <name>
+Metrics:       GET /metrics (Prometheus)   Failed jobs: GET /queues/<name>/failed
 `);
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  try {
-    main(process.argv.slice(2));
-  } catch (err) {
+  main(process.argv.slice(2)).catch((err) => {
     console.error(`✖ ${err.message}`);
     process.exitCode = 1;
-  }
+  });
 }
