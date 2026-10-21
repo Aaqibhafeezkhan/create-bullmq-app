@@ -3,6 +3,7 @@
 ## 0.1.1
 
 - Fix: the CLI did nothing when run via `npm create` / `npx`, because the entry check compared the `.bin` symlink path with the real file. It now compares real paths (regression test added).
+- Fix: scaffolding failed when the CLI was installed from npm, because the copy filter skipped every path containing `node_modules`, including the template itself. The filter now looks only at paths inside the template.
 
 ## 0.1.0
 

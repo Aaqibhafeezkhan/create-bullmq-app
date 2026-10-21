@@ -13,6 +13,13 @@ jobs:
         with: { node-version: "${{ matrix.node }}" }
       - run: npm test
       - run: npm pack --dry-run
+      - name: Run the packed CLI the way users do (installed + via .bin symlink)
+        run: |
+          T=$(npm pack -s --pack-destination "$RUNNER_TEMP")
+          mkdir "$RUNNER_TEMP/u" && cd "$RUNNER_TEMP/u" && npm init -y >/dev/null
+          npm i "$RUNNER_TEMP/$T"
+          npx create-bullmq-app svc --no-git --no-install
+          test -f svc/.gitignore && test -f svc/src/worker.ts
 
   generated-app:
     runs-on: ubuntu-latest

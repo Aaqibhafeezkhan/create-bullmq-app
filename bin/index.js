@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
 import { cpSync, existsSync, realpathSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
-import { basename, dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { createInterface } from 'node:readline/promises';
@@ -40,7 +40,8 @@ export function scaffold(target, opts = {}) {
 
   cpSync(TEMPLATE, target, {
     recursive: true,
-    filter: (src) => !/[\\/](node_modules|dist|coverage)([\\/]|$)/.test(src),
+    // Test against the path inside the template: the template itself lives under node_modules when installed.
+    filter: (src) => !/(^|[\\/])(node_modules|dist|coverage)([\\/]|$)/.test(relative(TEMPLATE, src)),
   });
   renameSync(join(target, '_gitignore'), join(target, '.gitignore'));
   // Pinned lockfile: reproducible installs and avoids an npm 10 peer-resolution crash.
