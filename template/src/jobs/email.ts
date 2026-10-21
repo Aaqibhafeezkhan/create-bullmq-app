@@ -16,6 +16,9 @@ export const payload = z.object({
 });
 export type Payload = z.infer<typeof payload>;
 
+/** Most email providers rate-limit you; BullMQ enforces this across every worker process. */
+export const limiter = { max: 10, duration: 1000 };
+
 export function jobId(p: Payload): string | undefined {
   return p.idempotencyKey ? `${name}-${p.idempotencyKey}` : undefined;
 }

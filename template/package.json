@@ -13,7 +13,8 @@
     "start:api": "node dist/api.js",
     "start:worker": "node dist/worker.js",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "new:queue": "node scripts/new-queue.mjs"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.5",

@@ -10,6 +10,8 @@ const EnvSchema = z.object({
   JOB_ATTEMPTS: z.coerce.number().int().min(1).max(50).default(5),
   JOB_BACKOFF_MS: z.coerce.number().int().min(0).default(2000),
   SHUTDOWN_TIMEOUT_MS: z.coerce.number().int().min(1000).default(25000),
+  /** Optional. Protects /queues*, /metrics and retry endpoints with a bearer token. */
+  ADMIN_TOKEN: z.string().min(16).optional(),
   WORKER_HEALTH_PORT: z.coerce.number().int().min(1).max(65535).default(3001),
 });
 

@@ -40,6 +40,13 @@ describe.skipIf(!url)('integration (real Redis)', () => {
     expect(a.id).toBe(b.id);
   });
 
+  it('upserting a schedule twice keeps a single scheduler', async () => {
+    await queue.upsertJobScheduler('t-schedule', { every: 60_000 }, { name: email.name, data: { to: 'a@b.co', subject: 's', body: 'b' } });
+    await queue.upsertJobScheduler('t-schedule', { every: 60_000 }, { name: email.name, data: { to: 'a@b.co', subject: 's', body: 'b' } });
+    expect(await queue.getJobSchedulersCount()).toBe(1);
+    await queue.removeJobScheduler('t-schedule');
+  });
+
   it('worker close drains and stops', async () => {
     await worker.close();
     expect(worker.isRunning()).toBe(false);

@@ -1,5 +1,5 @@
 import { createServer } from 'node:http';
-import { Worker } from 'bullmq';
+import { Queue, Worker } from 'bullmq';
 import { loadConfig } from './config.js';
 import { jobs } from './jobs/index.js';
 import { createLogger } from './lib/logger.js';
@@ -16,7 +16,8 @@ const workers = Object.values(jobs).map((def) => {
   const w = new Worker(def.name, def.process, {
     connection,
     prefix: config.QUEUE_PREFIX,
-    concurrency: config.WORKER_CONCURRENCY,
+    concurrency: def.concurrency ?? config.WORKER_CONCURRENCY,
+    ...(def.limiter ? { limiter: def.limiter } : {}),
   });
   w.on('completed', (job) => logger.info({ queue: def.name, jobId: job.id }, 'job completed'));
   w.on('failed', (job, err) =>
@@ -26,6 +27,20 @@ const workers = Object.values(jobs).map((def) => {
   w.on('error', (err) => logger.error({ queue: def.name, err }, 'worker error'));
   return w;
 });
+
+// Register cron / repeatable jobs. upsert is idempotent, so N workers = still one schedule.
+const schedulerQueues: Queue[] = [];
+for (const def of Object.values(jobs)) {
+  if (!def.schedule) continue;
+  const connection = createRedis(config.REDIS_URL);
+  clients.push(connection);
+  const q = new Queue(def.name, { connection, prefix: config.QUEUE_PREFIX });
+  schedulerQueues.push(q);
+  const { data, ...repeat } = def.schedule;
+  q.upsertJobScheduler(`${def.name}-schedule`, repeat, { name: def.name, data })
+    .then(() => logger.info({ queue: def.name, ...repeat }, 'schedule registered'))
+    .catch((err) => logger.error({ queue: def.name, err }, 'failed to register schedule'));
+}
 
 // Tiny health server so orchestrators can probe the worker too.
 let draining = false;
@@ -40,6 +55,7 @@ onShutdown(
     { name: 'readiness', close: async () => { draining = true; } },
     // close() stops fetching new jobs and waits for active ones to finish.
     ...workers.map((w) => ({ name: `worker:${w.name}`, close: () => w.close() })),
+    { name: 'schedulers', close: () => Promise.all(schedulerQueues.map((q) => q.close())) },
     { name: 'redis', close: () => Promise.all(clients.map((c) => c.quit())) },
     { name: 'health', close: () => new Promise<void>((r) => health.close(() => r())) },
   ],

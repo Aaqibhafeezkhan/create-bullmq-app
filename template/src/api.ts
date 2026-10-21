@@ -10,7 +10,7 @@ const logger = createLogger(config, 'api');
 const { queues, closeAll } = createQueues(config);
 let draining = false;
 
-const app = createApp({ queues, logger, isShuttingDown: () => draining });
+const app = createApp({ queues, logger, isShuttingDown: () => draining, adminToken: config.ADMIN_TOKEN });
 const server = serve({ fetch: app.fetch, port: config.PORT }, (info) => logger.info({ port: info.port }, 'api listening'));
 
 onShutdown(

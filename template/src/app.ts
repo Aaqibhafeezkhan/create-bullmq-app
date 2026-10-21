@@ -1,4 +1,7 @@
 import { Hono } from 'hono';
+import { bearerAuth } from 'hono/bearer-auth';
+import { HTTPException } from 'hono/http-exception';
+import { renderMetrics } from './metrics.js';
 import type { Queue } from 'bullmq';
 import { jobs } from './jobs/index.js';
 import type { Logger } from './lib/logger.js';
@@ -7,12 +10,15 @@ export interface AppDeps {
   queues: Map<string, Queue>;
   logger: Logger;
   isShuttingDown: () => boolean;
+  /** When set, /queues*, /metrics and retry endpoints require `Authorization: Bearer <token>`. */
+  adminToken?: string | undefined;
 }
 
-export function createApp({ queues, logger, isShuttingDown }: AppDeps) {
+export function createApp({ queues, logger, isShuttingDown, adminToken }: AppDeps) {
   const app = new Hono();
 
   app.onError((err, c) => {
+    if (err instanceof HTTPException) return err.getResponse();
     logger.error({ err, path: c.req.path }, 'unhandled error');
     return c.json({ error: 'internal_error' }, 500);
   });
@@ -68,6 +74,47 @@ export function createApp({ queues, logger, isShuttingDown }: AppDeps) {
       failedReason: job.failedReason ?? null,
     });
   });
+
+  if (adminToken) {
+    const auth = bearerAuth({ token: adminToken });
+    app.use('/queues/*', auth);
+    app.use('/queues', auth);
+    app.use('/metrics', auth);
+    app.use('/jobs/:name/:id/retry', auth);
+  }
+
+  /** Retry one failed job (manual dead-letter handling). */
+  app.post('/jobs/:name/:id/retry', async (c) => {
+    const queue = queues.get(c.req.param('name'));
+    if (!queue) return c.json({ error: 'unknown_queue' }, 404);
+    const job = await queue.getJob(c.req.param('id'));
+    if (!job) return c.json({ error: 'not_found' }, 404);
+    if ((await job.getState()) !== 'failed') return c.json({ error: 'not_failed' }, 409);
+    await job.retry('failed');
+    return c.json({ id: job.id, retried: true }, 202);
+  });
+
+  /** Failed jobs that used up every attempt: the dead-letter view. */
+  app.get('/queues/:name/failed', async (c) => {
+    const queue = queues.get(c.req.param('name'));
+    if (!queue) return c.json({ error: 'unknown_queue' }, 404);
+    const limit = Math.min(Math.max(Number(c.req.query('limit') ?? 20) || 20, 1), 100);
+    const failed = await queue.getFailed(0, limit - 1);
+    return c.json(
+      failed.map((j) => ({ id: j.id, attemptsMade: j.attemptsMade, failedReason: j.failedReason, finishedOn: j.finishedOn ?? null, data: j.data })),
+    );
+  });
+
+  /** Re-queue every failed job in a queue, e.g. after fixing a downstream outage. */
+  app.post('/queues/:name/retry-failed', async (c) => {
+    const queue = queues.get(c.req.param('name'));
+    if (!queue) return c.json({ error: 'unknown_queue' }, 404);
+    await queue.retryJobs({ state: 'failed' });
+    return c.json({ queue: queue.name, retried: true }, 202);
+  });
+
+  /** Prometheus scrape endpoint. */
+  app.get('/metrics', async (c) => c.text(await renderMetrics(queues), 200, { 'content-type': 'text/plain; version=0.0.4' }));
 
   /** Queue counts, handy for dashboards and alerts. */
   app.get('/queues', async (c) => {
