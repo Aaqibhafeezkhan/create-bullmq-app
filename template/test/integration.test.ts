@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Queue, QueueEvents, Worker } from 'bullmq';
-import { connectionFromUrl } from '../src/lib/redis.js';
+import { createRedis } from '../src/lib/redis.js';
 import * as email from '../src/jobs/email.js';
 
 // Runs only when a real Redis is available (CI provides one).
@@ -11,11 +11,13 @@ describe.skipIf(!url)('integration (real Redis)', () => {
   let queue: Queue;
   let events: QueueEvents;
   let worker: Worker;
+  const clients: ReturnType<typeof createRedis>[] = [];
+  const client = (forWorker = false) => { const c = createRedis(url!, { forWorker }); clients.push(c); return c; };
 
   beforeAll(async () => {
-    queue = new Queue(email.name, { connection: connectionFromUrl(url!), prefix });
-    events = new QueueEvents(email.name, { connection: connectionFromUrl(url!, { forWorker: true }), prefix });
-    worker = new Worker(email.name, email.process, { connection: connectionFromUrl(url!, { forWorker: true }), prefix });
+    queue = new Queue(email.name, { connection: client(), prefix });
+    events = new QueueEvents(email.name, { connection: client(true), prefix });
+    worker = new Worker(email.name, email.process, { connection: client(true), prefix });
     await Promise.all([queue.waitUntilReady(), events.waitUntilReady(), worker.waitUntilReady()]);
   });
 
@@ -23,6 +25,7 @@ describe.skipIf(!url)('integration (real Redis)', () => {
     await worker?.close();
     await queue?.obliterate({ force: true });
     await Promise.all([queue?.close(), events?.close()]);
+    await Promise.all(clients.map((c) => c.quit()));
   });
 
   it('processes a job end to end', async () => {

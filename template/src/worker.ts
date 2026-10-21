@@ -3,14 +3,16 @@ import { Worker } from 'bullmq';
 import { loadConfig } from './config.js';
 import { jobs } from './jobs/index.js';
 import { createLogger } from './lib/logger.js';
-import { connectionFromUrl } from './lib/redis.js';
+import { createRedis } from './lib/redis.js';
 import { onShutdown } from './lib/shutdown.js';
 
 const config = loadConfig();
 const logger = createLogger(config, 'worker');
-const connection = connectionFromUrl(config.REDIS_URL, { forWorker: true });
 
+const clients: ReturnType<typeof createRedis>[] = [];
 const workers = Object.values(jobs).map((def) => {
+  const connection = createRedis(config.REDIS_URL, { forWorker: true });
+  clients.push(connection);
   const w = new Worker(def.name, def.process, {
     connection,
     prefix: config.QUEUE_PREFIX,
@@ -38,6 +40,7 @@ onShutdown(
     { name: 'readiness', close: async () => { draining = true; } },
     // close() stops fetching new jobs and waits for active ones to finish.
     ...workers.map((w) => ({ name: `worker:${w.name}`, close: () => w.close() })),
+    { name: 'redis', close: () => Promise.all(clients.map((c) => c.quit())) },
     { name: 'health', close: () => new Promise<void>((r) => health.close(() => r())) },
   ],
   { logger, timeoutMs: config.SHUTDOWN_TIMEOUT_MS },

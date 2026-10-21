@@ -26,7 +26,7 @@ export function createApp({ queues, logger, isShuttingDown }: AppDeps) {
     try {
       const first = queues.values().next().value as Queue | undefined;
       // A cheap real round-trip to Redis; fails fast because producers disable the offline queue.
-      if (first) await first.getJobCounts('waiting');
+      if (first) await withTimeout(first.getJobCounts('waiting'), 2000);
       return c.json({ status: 'ok' });
     } catch (err) {
       logger.warn({ err }, 'readiness check failed');
@@ -77,4 +77,12 @@ export function createApp({ queues, logger, isShuttingDown }: AppDeps) {
   });
 
   return app;
+}
+
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  let t: NodeJS.Timeout;
+  return Promise.race([
+    p.finally(() => clearTimeout(t)),
+    new Promise<never>((_, rej) => { t = setTimeout(() => rej(new Error(`timed out after ${ms}ms`)), ms); }),
+  ]);
 }

@@ -1,16 +1,17 @@
 import { Queue } from 'bullmq';
 import type { Config } from './config.js';
 import { jobs } from './jobs/index.js';
-import { connectionFromUrl } from './lib/redis.js';
+import type { Redis } from 'ioredis';
+import { createRedis } from './lib/redis.js';
 
 export function createQueues(config: Config) {
-  const connection = connectionFromUrl(config.REDIS_URL);
   const queues = new Map<string, Queue>();
+  const clients: Redis[] = [];
   for (const name of Object.keys(jobs)) {
     queues.set(
       name,
       new Queue(name, {
-        connection,
+        connection: track(clients, createRedis(config.REDIS_URL)),
         prefix: config.QUEUE_PREFIX,
         defaultJobOptions: {
           attempts: config.JOB_ATTEMPTS,
@@ -22,5 +23,15 @@ export function createQueues(config: Config) {
       }),
     );
   }
-  return queues;
+  /** BullMQ does not close clients it did not create, so we do. */
+  const closeAll = async () => {
+    await Promise.all([...queues.values()].map((q) => q.close()));
+    await Promise.all(clients.map((c) => c.quit()));
+  };
+  return { queues, closeAll };
+}
+
+function track(list: Redis[], c: Redis) {
+  list.push(c);
+  return c;
 }

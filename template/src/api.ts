@@ -7,7 +7,7 @@ import { createQueues } from './queues.js';
 
 const config = loadConfig();
 const logger = createLogger(config, 'api');
-const queues = createQueues(config);
+const { queues, closeAll } = createQueues(config);
 let draining = false;
 
 const app = createApp({ queues, logger, isShuttingDown: () => draining });
@@ -17,7 +17,7 @@ onShutdown(
   [
     { name: 'readiness', close: async () => { draining = true; } },
     { name: 'http', close: () => new Promise<void>((res, rej) => server.close((e) => (e ? rej(e) : res()))) },
-    ...[...queues].map(([name, q]) => ({ name: `queue:${name}`, close: () => q.close() })),
+    { name: 'queues+redis', close: closeAll },
   ],
   { logger, timeoutMs: config.SHUTDOWN_TIMEOUT_MS },
 );

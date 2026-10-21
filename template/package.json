@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev:api": "tsx watch src/api.ts",
     "dev:worker": "tsx watch src/worker.ts",
@@ -17,6 +19,7 @@
     "@hono/node-server": "^2.1.5",
     "bullmq": "^6.4.0",
     "hono": "^4.13.13",
+    "ioredis": "^5.11.1",
     "pino": "^10.4.0",
     "zod": "^4.1.0"
   },
