@@ -70,3 +70,42 @@ jobs:
       - uses: actions/checkout@v4
       - run: node bin/index.js ../demo-svc --no-git --no-install
       - run: docker build -t demo-svc ../demo-svc
+
+  generated-app-other-pms:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: { pm: [pnpm, bun] }
+    services:
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: --health-cmd "redis-cli ping" --health-interval 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - if: matrix.pm == 'pnpm'
+        uses: pnpm/action-setup@v4
+        with: { version: 9 }
+      - if: matrix.pm == 'bun'
+        uses: oven-sh/setup-bun@v2
+      - name: Scaffold and install with ${{ matrix.pm }}
+        run: node bin/index.js ../svc-${{ matrix.pm }} --no-git --pm ${{ matrix.pm }}
+      - name: Typecheck, test, new:queue, build
+        working-directory: ../svc-${{ matrix.pm }}
+        env: { REDIS_URL: "redis://localhost:6379" }
+        run: |
+          ${{ matrix.pm }} run typecheck
+          ${{ matrix.pm }} run test
+          ${{ matrix.pm }} run new:queue -- resize-image
+          test -f src/jobs/resize-image.ts
+          ${{ matrix.pm }} run build
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm test

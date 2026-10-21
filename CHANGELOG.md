@@ -1,5 +1,14 @@
 # create-bullmq-app
 
+## 0.2.0
+
+- Bun support: `bunx create-bullmq-app` / `bun create bullmq-app` is detected, and `--pm bun` is accepted.
+- pnpm, yarn and bun projects no longer ship the npm `package-lock.json`. Their generated CI workflow and README
+  use that package manager (setup action, frozen install, `<pm> run ...`).
+- Fix: `pnpm run new:queue -- <name>` (and yarn) failed because those package managers pass a literal `--`
+  to the script. Next steps now print `<pm> run new:queue <name>` for non-npm managers.
+- Tests run on Windows in CI, and generated pnpm/bun projects are typechecked, tested against Redis and built in CI.
+
 ## 0.1.1
 
 - Fix: the CLI did nothing when run via `npm create` / `npx`, because the entry check compared the `.bin` symlink path with the real file. It now compares real paths (regression test added).

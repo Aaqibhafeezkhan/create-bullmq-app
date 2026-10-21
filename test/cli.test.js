@@ -3,6 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import { detectPm, prompt, scaffold, validName } from '../bin/index.js';
 
@@ -47,7 +48,7 @@ test('validName and detectPm', () => {
 });
 
 test('CLI end to end with --help and without install', () => {
-  const bin = new URL('../bin/index.js', import.meta.url).pathname;
+  const bin = fileURLToPath(new URL('../bin/index.js', import.meta.url));
   const help = spawnSync(process.execPath, [bin, '--help'], { encoding: 'utf8' });
   assert.equal(help.status, 0);
   assert.match(help.stdout, /--no-docker/);
@@ -70,7 +71,7 @@ test('interactive prompt uses answers and defaults', async () => {
 });
 
 test('--yes without a dir uses the default name', () => {
-  const bin = new URL('../bin/index.js', import.meta.url).pathname;
+  const bin = fileURLToPath(new URL('../bin/index.js', import.meta.url));
   const cwd = tmp();
   const r = spawnSync(process.execPath, [bin, '-y', '--no-install', '--no-git'], { cwd, encoding: 'utf8' });
   assert.equal(r.status, 0, r.stderr);
@@ -79,11 +80,53 @@ test('--yes without a dir uses the default name', () => {
 });
 
 test('runs when invoked through a symlink (npx / node_modules/.bin)', () => {
-  const bin = new URL('../bin/index.js', import.meta.url).pathname;
+  const bin = fileURLToPath(new URL('../bin/index.js', import.meta.url));
   const cwd = tmp();
   const link = join(cwd, 'create-bullmq-app');
   symlinkSync(bin, link);
   const r = spawnSync(process.execPath, [link, 'svc', '--no-install', '--no-git'], { cwd, encoding: 'utf8' });
   assert.equal(r.status, 0, r.stderr);
   assert.ok(existsSync(join(cwd, 'svc', 'package.json')));
+});
+
+test('detectPm recognises bun', () => {
+  assert.equal(detectPm('bun/1.2.0 npm/? node/v22.6.0 linux x64'), 'bun');
+});
+
+test('new:queue accepts the name after a literal "--" (pnpm/yarn pass it through)', () => {
+  const dir = join(tmp(), 'q-svc');
+  scaffold(dir);
+  const script = join(dir, 'scripts', 'new-queue.mjs');
+  const r = spawnSync(process.execPath, [script, '--', 'resize-image'], { cwd: dir, encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  assert.ok(existsSync(join(dir, 'src', 'jobs', 'resize-image.ts')));
+});
+
+for (const pm of ['pnpm', 'yarn', 'bun']) {
+  test(`scaffold for ${pm}: no npm lockfile and CI uses ${pm}`, () => {
+    const dir = join(tmp(), `svc-${pm}`);
+    scaffold(dir, { pm });
+    assert.ok(!existsSync(join(dir, 'package-lock.json')));
+    const ci = readFileSync(join(dir, '.github', 'workflows', 'ci.yml'), 'utf8');
+    assert.doesNotMatch(ci, /npm ci/);
+    assert.match(ci, new RegExp(`${pm} (run )?typecheck`));
+    if (pm === 'bun') assert.match(ci, /oven-sh\/setup-bun/);
+    if (pm === 'pnpm') assert.match(ci, /pnpm\/action-setup/);
+  });
+}
+
+test('scaffold for npm keeps the pinned lockfile and npm ci', () => {
+  const dir = join(tmp(), 'svc-npm');
+  scaffold(dir, { pm: 'npm' });
+  assert.ok(existsSync(join(dir, 'package-lock.json')));
+  assert.match(readFileSync(join(dir, '.github', 'workflows', 'ci.yml'), 'utf8'), /npm ci/);
+});
+
+test('--pm bun is accepted on the CLI and next steps use bun', () => {
+  const bin = fileURLToPath(new URL('../bin/index.js', import.meta.url));
+  const cwd = tmp();
+  const r = spawnSync(process.execPath, [bin, 'bsvc', '--no-install', '--no-git', '--pm', 'bun'], { cwd, encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /bun run dev:api/);
+  assert.match(r.stdout, /bun run new:queue <name>/);
 });

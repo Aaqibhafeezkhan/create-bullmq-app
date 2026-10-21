@@ -3,7 +3,8 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const name = process.argv[2];
+// pnpm and yarn forward a literal `--` to the script, so skip it.
+const name = process.argv.slice(2).find((a) => a !== '--');
 if (!name || !/^[a-z][a-z0-9-]{0,62}$/.test(name)) {
   console.error('Usage: npm run new:queue -- <name>   (lowercase letters, digits and dashes)');
   process.exit(1);

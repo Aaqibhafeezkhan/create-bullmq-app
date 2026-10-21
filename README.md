@@ -47,7 +47,7 @@ Adding a queue = one command: `npm run new:queue -- resize-image` writes `src/jo
 ## Options
 
 ```
-npm create bullmq-app@latest [dir] [-y] [--no-docker] [--no-ci] [--no-install] [--no-git] [--pm npm|pnpm|yarn]
+npm create bullmq-app@latest [dir] [-y] [--no-docker] [--no-ci] [--no-install] [--no-git] [--pm npm|pnpm|yarn|bun]
 ```
 
 ## Quickstart (generated project)

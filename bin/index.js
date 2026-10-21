@@ -17,7 +17,7 @@ Options:
   --no-ci          skip the GitHub Actions workflow
   --no-install     do not install dependencies
   --no-git         do not run git init
-  --pm <name>      package manager: npm | pnpm | yarn (default: detected)
+  --pm <name>      package manager: npm | pnpm | yarn | bun (default: detected)
   -h, --help       show this help
 `;
 
@@ -28,12 +28,26 @@ export function validName(name) {
 export function detectPm(ua = process.env.npm_config_user_agent ?? '') {
   if (ua.startsWith('pnpm')) return 'pnpm';
   if (ua.startsWith('yarn')) return 'yarn';
+  if (ua.startsWith('bun')) return 'bun';
   return 'npm';
 }
 
 /** Copy the template into `target` and apply options. Pure filesystem; no installs. */
+export const PMS = ['npm', 'pnpm', 'yarn', 'bun'];
+
+/** How to run a package.json script with each package manager. */
+export const runCmd = (pm) => (pm === 'npm' ? 'npm run' : `${pm} run`);
+
+const CI_SETUP = {
+  npm: { setup: '', install: 'npm ci' },
+  pnpm: { setup: '      - uses: pnpm/action-setup@v4\n        with: { version: 9 }\n', install: 'pnpm install --frozen-lockfile' },
+  yarn: { setup: '      - run: corepack enable\n', install: 'yarn install --immutable' },
+  bun: { setup: '      - uses: oven-sh/setup-bun@v2\n', install: 'bun install --frozen-lockfile' },
+};
+
 export function scaffold(target, opts = {}) {
-  const { docker = true, ci = true } = opts;
+  const { docker = true, ci = true, pm = 'npm' } = opts;
+  if (!PMS.includes(pm)) throw new Error(`Unknown package manager: ${pm}`);
   const name = basename(resolve(target)).toLowerCase();
   if (!validName(name)) throw new Error(`"${name}" is not a valid npm package name`);
   if (existsSync(target) && readdirSync(target).length > 0) throw new Error(`Directory ${target} is not empty`);
@@ -53,6 +67,32 @@ export function scaffold(target, opts = {}) {
   for (const f of ['package.json', 'package-lock.json', 'README.md']) {
     const p = join(target, f);
     writeFileSync(p, readFileSync(p, 'utf8').replaceAll('__APP_NAME__', name));
+  }
+  if (pm !== 'npm') {
+    // The pinned npm lockfile would sit next to pnpm-lock.yaml / yarn.lock / bun.lock and drift.
+    rmSync(join(target, 'package-lock.json'));
+    const run = runCmd(pm);
+    const readme = join(target, 'README.md');
+    writeFileSync(
+      readme,
+      readFileSync(readme, 'utf8')
+        .replaceAll('npm run new:queue -- ', `${run} new:queue `)
+        .replaceAll('npm run ', `${run} `)
+        .replaceAll('npm install', `${pm} install`)
+        .replaceAll('npm ci', `${pm} install`),
+    );
+    if (ci) {
+      const wf = join(target, '.github', 'workflows', 'ci.yml');
+      const { setup, install } = CI_SETUP[pm];
+      writeFileSync(
+        wf,
+        readFileSync(wf, 'utf8')
+          .replace('      - uses: actions/setup-node@v4', `${setup}      - uses: actions/setup-node@v4`)
+          .replace('npm ci', install)
+          .replaceAll('npm run ', `${run} `)
+          .replace('npm test', `${run} test`),
+      );
+    }
   }
   if (!docker) {
     const p = join(target, 'README.md');
@@ -122,10 +162,10 @@ async function main(argv) {
     return;
   }
   const pm = values.pm ?? detectPm();
-  if (!['npm', 'pnpm', 'yarn'].includes(pm)) throw new Error(`Unknown package manager: ${pm}`);
+  if (!PMS.includes(pm)) throw new Error(`Unknown package manager: ${pm}`);
 
   const target = resolve(dir);
-  const { name } = scaffold(target, values);
+  const { name } = scaffold(target, { ...values, pm });
   console.log(`\n✔ Created ${name} in ${target}`);
 
   if (values.git) run('git', ['init', '-q'], target);
@@ -133,14 +173,14 @@ async function main(argv) {
     console.log(`\nInstalling dependencies with ${pm}...`);
     if (!run(pm, ['install'], target)) console.warn(`\n⚠ Install failed. Run "${pm} install" yourself.`);
   }
-  const r = pm === 'npm' ? 'npm run' : pm;
+  const r = runCmd(pm);
   console.log(`\nNext steps:
   cd ${dir}
   cp .env.example .env${values.docker ? '\n  docker compose up -d redis' : ''}${values.install ? '' : `\n  ${pm} install`}
   ${r} dev:api      # in one terminal
   ${r} dev:worker   # in another
 
-Add a queue:   ${r} new:queue -- <name>
+Add a queue:   ${r} new:queue ${pm === 'npm' ? '-- ' : ''}<name>
 Metrics:       GET /metrics (Prometheus)   Failed jobs: GET /queues/<name>/failed
 `);
 }
