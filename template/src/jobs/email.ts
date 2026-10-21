@@ -11,13 +11,13 @@ export const payload = z.object({
   to: z.string().email(),
   subject: z.string().min(1).max(200),
   body: z.string().min(1),
-  /** Optional client-supplied key; same key = same job (dedupe on retries). */
-  idempotencyKey: z.string().min(1).max(128).optional(),
+  /** Optional client-supplied key; same key = same job (dedupe on retries). BullMQ ids cannot contain ":". */
+  idempotencyKey: z.string().regex(/^[A-Za-z0-9_.-]{1,128}$/, 'use 1-128 chars of A-Z a-z 0-9 _ . -').optional(),
 });
 export type Payload = z.infer<typeof payload>;
 
 export function jobId(p: Payload): string | undefined {
-  return p.idempotencyKey ? `${name}:${p.idempotencyKey}` : undefined;
+  return p.idempotencyKey ? `${name}-${p.idempotencyKey}` : undefined;
 }
 
 export async function process(job: Job<Payload>): Promise<{ delivered: true; to: string }> {

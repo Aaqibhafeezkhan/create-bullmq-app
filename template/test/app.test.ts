@@ -35,7 +35,7 @@ describe('api', () => {
   it('uses idempotency key as jobId', async () => {
     const { app } = setup();
     const res = await app.request('/jobs/email', post({ to: 'a@b.co', subject: 'hi', body: 'x', idempotencyKey: 'k1' }));
-    expect(await res.json()).toEqual({ id: 'email:k1', queue: 'email' });
+    expect(await res.json()).toEqual({ id: 'email-k1', queue: 'email' });
   });
   it('rejects invalid payloads with 422', async () => {
     expect((await setup().app.request('/jobs/email', post({ to: 'nope' }))).status).toBe(422);
@@ -47,5 +47,12 @@ describe('api', () => {
   });
   it('returns 404 for missing jobs', async () => {
     expect((await setup().app.request('/jobs/email/123')).status).toBe(404);
+  });
+});
+
+describe('idempotency key validation', () => {
+  it('rejects keys BullMQ cannot store', async () => {
+    const res = await setup().app.request('/jobs/email', post({ to: 'a@b.co', subject: 'hi', body: 'x', idempotencyKey: 'a:b' }));
+    expect(res.status).toBe(422);
   });
 });
