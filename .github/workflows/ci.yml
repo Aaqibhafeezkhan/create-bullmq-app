@@ -1,0 +1,61 @@
+name: CI
+on:
+  push: { branches: [main] }
+  pull_request:
+jobs:
+  cli:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: { node: [20, 22, 24] }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "${{ matrix.node }}" }
+      - run: npm test
+      - run: npm pack --dry-run
+
+  generated-app:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: --health-cmd "redis-cli ping" --health-interval 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Scaffold and install
+        run: node bin/index.js ../demo-svc --no-git
+      - name: Typecheck, test (incl. real Redis), build
+        working-directory: ../demo-svc
+        env: { REDIS_URL: "redis://localhost:6379" }
+        run: |
+          npm run typecheck
+          npm test
+          npm run build
+      - name: Smoke test API + worker with graceful shutdown
+        working-directory: ../demo-svc
+        env: { REDIS_URL: "redis://localhost:6379", LOG_LEVEL: warn }
+        run: |
+          node dist/api.js & API=$!
+          node dist/worker.js & WORKER=$!
+          for i in $(seq 1 30); do curl -fs localhost:3000/health/ready && break; sleep 1; done
+          curl -fs localhost:3001/health/ready
+          ID=$(curl -fs -X POST localhost:3000/jobs/email -H 'content-type: application/json' \
+            -d '{"to":"a@b.co","subject":"s","body":"b","idempotencyKey":"ci"}' | node -pe 'JSON.parse(require("fs").readFileSync(0)).id')
+          for i in $(seq 1 20); do
+            STATE=$(curl -fs localhost:3000/jobs/email/$ID | node -pe 'JSON.parse(require("fs").readFileSync(0)).state')
+            [ "$STATE" = completed ] && break; sleep 0.5
+          done
+          echo "job $ID state=$STATE"; [ "$STATE" = completed ]
+          kill -TERM $API $WORKER
+          wait $API; wait $WORKER
+          echo "both processes exited cleanly"
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: node bin/index.js ../demo-svc --no-git --no-install
+      - run: docker build -t demo-svc ../demo-svc
