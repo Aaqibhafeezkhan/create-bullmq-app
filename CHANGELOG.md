@@ -1,5 +1,9 @@
 # create-bullmq-app
 
+## 0.1.1
+
+- Fix: the CLI did nothing when run via `npm create` / `npx`, because the entry check compared the `.bin` symlink path with the real file. It now compares real paths (regression test added).
+
 ## 0.1.0
 
 First public release.

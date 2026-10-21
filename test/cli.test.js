@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -76,4 +76,14 @@ test('--yes without a dir uses the default name', () => {
   assert.equal(r.status, 0, r.stderr);
   assert.ok(existsSync(join(cwd, 'my-bullmq-app', 'scripts', 'new-queue.mjs')));
   assert.match(r.stdout, /new:queue/);
+});
+
+test('runs when invoked through a symlink (npx / node_modules/.bin)', () => {
+  const bin = new URL('../bin/index.js', import.meta.url).pathname;
+  const cwd = tmp();
+  const link = join(cwd, 'create-bullmq-app');
+  symlinkSync(bin, link);
+  const r = spawnSync(process.execPath, [link, 'svc', '--no-install', '--no-git'], { cwd, encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  assert.ok(existsSync(join(cwd, 'svc', 'package.json')));
 });
