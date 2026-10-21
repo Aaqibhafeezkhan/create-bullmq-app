@@ -60,19 +60,18 @@ function run(cmd, args, cwd) {
 }
 
 function main(argv) {
+  // Node 20's parseArgs has no allowNegative, so map --no-<flag> ourselves.
+  const toggles = ['docker', 'ci', 'install', 'git'];
+  const off = new Set(argv.filter((a) => toggles.some((t) => a === `--no-${t}`)).map((a) => a.slice(5)));
   const { values, positionals } = parseArgs({
-    args: argv,
+    args: argv.filter((a) => !toggles.some((t) => a === `--no-${t}`)),
     allowPositionals: true,
-    allowNegative: true,
     options: {
-      docker: { type: 'boolean', default: true },
-      ci: { type: 'boolean', default: true },
-      install: { type: 'boolean', default: true },
-      git: { type: 'boolean', default: true },
       pm: { type: 'string' },
       help: { type: 'boolean', short: 'h' },
     },
   });
+  for (const t of toggles) values[t] = !off.has(t);
   if (values.help) return void process.stdout.write(HELP);
   const dir = positionals[0];
   if (!dir) {
