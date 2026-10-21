@@ -1,0 +1,39 @@
+services:
+  redis:
+    image: redis:7-alpine
+    # BullMQ requires noeviction, otherwise Redis may silently drop job keys.
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    ports: ["6379:6379"]
+    volumes: [redis-data:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 10
+
+  api:
+    build: .
+    command: ["node", "dist/api.js"]
+    env_file: [.env.example]
+    environment:
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: production
+    ports: ["3000:3000"]
+    depends_on: { redis: { condition: service_healthy } }
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health/ready"]
+      interval: 10s
+
+  worker:
+    build: .
+    command: ["node", "dist/worker.js"]
+    env_file: [.env.example]
+    environment:
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: production
+    depends_on: { redis: { condition: service_healthy } }
+    # Must exceed SHUTDOWN_TIMEOUT_MS so active jobs can finish on deploy.
+    stop_grace_period: 30s
+    deploy: { replicas: 2 }
+
+volumes:
+  redis-data:
