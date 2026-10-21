@@ -6,7 +6,7 @@
   "bin": { "create-bullmq-app": "bin/index.js" },
   "files": ["bin", "template"],
   "engines": { "node": ">=20" },
-  "scripts": { "test": "node --test test/" },
+  "scripts": { "test": "node --test test/*.test.js" },
   "keywords": ["bullmq", "redis", "queue", "worker", "starter", "template", "typescript", "hono", "create"],
   "author": "Krrish Kumar",
   "license": "MIT",

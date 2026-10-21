@@ -36,14 +36,16 @@ export function scaffold(target, opts = {}) {
 
   cpSync(TEMPLATE, target, {
     recursive: true,
-    filter: (src) => !/[\\/](node_modules|dist|coverage)([\\/]|$)/.test(src) && !src.endsWith('package-lock.json'),
+    filter: (src) => !/[\\/](node_modules|dist|coverage)([\\/]|$)/.test(src),
   });
   renameSync(join(target, '_gitignore'), join(target, '.gitignore'));
+  // Pinned lockfile: reproducible installs and avoids an npm 10 peer-resolution crash.
+  renameSync(join(target, '_package-lock.json'), join(target, 'package-lock.json'));
   if (ci) renameSync(join(target, '_github'), join(target, '.github'));
   else rmSync(join(target, '_github'), { recursive: true });
   if (!docker) for (const f of ['Dockerfile', 'docker-compose.yml', '.dockerignore']) rmSync(join(target, f));
 
-  for (const f of ['package.json', 'README.md']) {
+  for (const f of ['package.json', 'package-lock.json', 'README.md']) {
     const p = join(target, f);
     writeFileSync(p, readFileSync(p, 'utf8').replaceAll('__APP_NAME__', name));
   }

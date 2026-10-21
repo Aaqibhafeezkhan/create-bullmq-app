@@ -15,6 +15,7 @@ test('scaffolds a full project', () => {
     assert.ok(existsSync(join(dir, f)), f);
   }
   assert.ok(!existsSync(join(dir, '_gitignore')));
+  assert.equal(JSON.parse(readFileSync(join(dir, 'package-lock.json'), 'utf8')).name, 'my-svc');
   assert.equal(JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).name, 'my-svc');
   assert.match(readFileSync(join(dir, 'README.md'), 'utf8'), /^# my-svc/);
 });
