@@ -2,6 +2,7 @@
 
 [![npm](https://img.shields.io/npm/v/create-bullmq-app)](https://www.npmjs.com/package/create-bullmq-app)
 [![CI](https://github.com/Krrishkumar125/create-bullmq-app/actions/workflows/ci.yml/badge.svg)](https://github.com/Krrishkumar125/create-bullmq-app/actions/workflows/ci.yml)
+[![downloads](https://img.shields.io/npm/dm/create-bullmq-app)](https://www.npmjs.com/package/create-bullmq-app)
 
 Scaffold a **production-ready BullMQ + TypeScript service** in one command: an HTTP API that validates and enqueues jobs, a separate worker process, health checks, graceful shutdown, Docker and CI that test against real Redis.
 
@@ -40,6 +41,7 @@ The [BullMQ "Going to production" guide](https://docs.bullmq.io/guide/going-to-p
 | **Typed config**        | Zod-validated env that fails fast with a readable list of errors                                                                    |
 | **Logging**             | pino JSON logs with secret redaction                                                                                                |
 | **Docker**              | multi-stage non-root image, compose with Redis (`noeviction`, AOF), 2 worker replicas, `stop_grace_period`                          |
+| **Lint**                | ESLint with typescript-eslint and [eslint-plugin-bullmq](https://www.npmjs.com/package/eslint-plugin-bullmq), which catches BullMQ production pitfalls; runs in CI|
 | **Tests + CI**          | Vitest unit tests plus integration tests against real Redis in GitHub Actions                                                       |
 
 Adding a queue = one command: `npm run new:queue -- resize-image` writes `src/jobs/resize-image.ts` (name, payload schema, id, processor) and registers it.

@@ -3,6 +3,7 @@ import type { ZodType } from 'zod';
 import * as email from './email.js';
 import * as dailyReport from './daily-report.js';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- definitions with different payloads share one registry
 export interface JobDefinition<P = any> {
   name: string;
   payload: ZodType<P>;

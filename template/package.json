@@ -14,7 +14,8 @@
     "start:worker": "node dist/worker.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "new:queue": "node scripts/new-queue.mjs"
+    "new:queue": "node scripts/new-queue.mjs",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@hono/node-server": "^2.1.5",
@@ -26,8 +27,11 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "eslint": "^9.39.0",
+    "eslint-plugin-bullmq": "^0.1.2",
     "tsx": "^4.23.0",
     "typescript": "^5.9.0",
+    "typescript-eslint": "^8.46.0",
     "vitest": "^4.0.0"
   }
 }

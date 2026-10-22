@@ -130,3 +130,15 @@ test('--pm bun is accepted on the CLI and next steps use bun', () => {
   assert.match(r.stdout, /bun run dev:api/);
   assert.match(r.stdout, /bun run new:queue <name>/);
 });
+
+test('generated project lints with the eslint-plugin-bullmq preset in CI', () => {
+  const dir = join(tmp(), 'lint-svc');
+  scaffold(dir);
+  const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+  assert.equal(pkg.scripts.lint, 'eslint .');
+  assert.ok(pkg.devDependencies['eslint-plugin-bullmq']);
+  assert.match(readFileSync(join(dir, 'eslint.config.js'), 'utf8'), /bullmq\.configs\.recommended/);
+  assert.match(readFileSync(join(dir, '.github', 'workflows', 'ci.yml'), 'utf8'), /npm run lint/);
+  const lock = JSON.parse(readFileSync(join(dir, 'package-lock.json'), 'utf8'));
+  assert.ok(lock.packages['node_modules/eslint-plugin-bullmq'], 'lockfile pins the plugin');
+});

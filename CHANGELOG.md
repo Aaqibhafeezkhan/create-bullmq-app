@@ -1,5 +1,11 @@
 # create-bullmq-app
 
+## 0.2.2
+
+### Patch Changes
+
+- Generated projects now include ESLint (`npm run lint`) with typescript-eslint and eslint-plugin-bullmq's recommended preset, and CI runs it.
+
 ## 0.2.1
 
 ### Patch Changes
