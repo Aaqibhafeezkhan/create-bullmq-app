@@ -1,7 +1,7 @@
 {
   "name": "create-bullmq-app",
   "version": "0.2.0",
-  "description": "Scaffold a production-ready BullMQ + TypeScript service: API, workers, graceful shutdown, health checks, Docker.",
+  "description": "Scaffold a production-ready BullMQ + TypeScript service with workers, graceful shutdown, health checks and Docker.",
   "type": "module",
   "bin": {
     "create-bullmq-app": "bin/index.js"
@@ -21,16 +21,13 @@
     "bullmq",
     "redis",
     "queue",
+    "job-queue",
     "worker",
-    "starter",
+    "scaffold",
+    "create",
     "template",
     "typescript",
-    "hono",
-    "create",
-    "prometheus",
-    "cron",
-    "job-queue",
-    "scaffold"
+    "docker"
   ],
   "author": "Krrish Kumar",
   "license": "MIT",
@@ -39,5 +36,7 @@
     "url": "git+https://github.com/Krrishkumar125/create-bullmq-app.git"
   },
   "homepage": "https://github.com/Krrishkumar125/create-bullmq-app#readme",
-  "bugs": "https://github.com/Krrishkumar125/create-bullmq-app/issues"
+  "bugs": {
+    "url": "https://github.com/Krrishkumar125/create-bullmq-app/issues"
+  }
 }
