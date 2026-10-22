@@ -1,6 +1,6 @@
 {
   "name": "create-bullmq-app",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Scaffold a production-ready BullMQ + TypeScript service with workers, graceful shutdown, health checks and Docker.",
   "type": "module",
   "bin": {

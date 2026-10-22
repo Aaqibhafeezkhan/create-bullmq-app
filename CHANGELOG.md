@@ -1,5 +1,11 @@
 # create-bullmq-app
 
+## 0.2.1
+
+### Patch Changes
+
+- npm metadata: shorter description, focused keywords, homepage/bugs links; README links sibling packages.
+
 ## 0.2.0
 
 - Bun support: `bunx create-bullmq-app` / `bun create bullmq-app` is detected, and `--pm bun` is accepted.
