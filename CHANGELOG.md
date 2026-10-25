@@ -1,5 +1,11 @@
 # create-bullmq-app
 
+## 0.2.3
+
+### Patch Changes
+
+- Generated projects rate-limit repeated Redis connection error logs instead of flooding the console. Thanks @Aaqibhafeezkhan (#6).
+
 ## 0.2.2
 
 ### Patch Changes
