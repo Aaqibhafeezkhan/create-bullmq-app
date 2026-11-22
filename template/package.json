@@ -19,19 +19,19 @@
   },
   "dependencies": {
     "@hono/node-server": "^2.1.5",
-    "bullmq": "^6.4.0",
+    "bullmq": "^6.7.8",
     "hono": "^4.13.13",
-    "ioredis": "^5.11.1",
+    "ioredis": "^6.0.0",
     "pino": "^10.4.0",
     "zod": "^4.1.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "eslint": "^9.39.0",
-    "eslint-plugin-bullmq": "^0.1.2",
+    "eslint": "^10.15.0",
+    "eslint-plugin-bullmq": "^0.1.3",
     "tsx": "^4.23.0",
     "typescript": "^5.9.0",
-    "typescript-eslint": "^8.46.0",
+    "typescript-eslint": "^8.73.0",
     "vitest": "^4.0.0"
   }
 }

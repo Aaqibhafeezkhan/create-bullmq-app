@@ -142,3 +142,21 @@ test('generated project lints with the eslint-plugin-bullmq preset in CI', () =>
   const lock = JSON.parse(readFileSync(join(dir, 'package-lock.json'), 'utf8'));
   assert.ok(lock.packages['node_modules/eslint-plugin-bullmq'], 'lockfile pins the plugin');
 });
+
+test('generated project pins current majors and the lockfile agrees with package.json', () => {
+  const dir = join(tmp(), 'pin-svc');
+  scaffold(dir);
+  const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+  const lock = JSON.parse(readFileSync(join(dir, 'package-lock.json'), 'utf8'));
+  const major = (name) => Number(lock.packages[`node_modules/${name}`].version.split('.')[0]);
+  assert.equal(major('bullmq'), 6);
+  assert.equal(major('ioredis'), 6);
+  assert.equal(major('eslint'), 10);
+  assert.match(lock.packages['node_modules/eslint-plugin-bullmq'].version, /^0\.1\.([3-9]|\d{2,})$/);
+  const nested = Object.keys(lock.packages).filter((k) => k.endsWith('/node_modules/ioredis'));
+  assert.deepEqual(nested, [], 'one copy of ioredis, so BullMQ and the app share types');
+  const root = lock.packages[''];
+  for (const section of ['dependencies', 'devDependencies']) {
+    assert.deepEqual(root[section], pkg[section], `${section} in the lockfile match package.json`);
+  }
+});

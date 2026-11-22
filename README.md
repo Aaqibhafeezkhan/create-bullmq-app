@@ -69,11 +69,11 @@ curl -X POST localhost:3000/jobs/email -H 'content-type: application/json' \
 |                                    | create-bullmq-app | Bull Board   | create-t3-app / Express starters | BullMQ docs examples |
 | ---------------------------------- | ----------------- | ------------ | -------------------------------- | -------------------- |
 | Scaffolds a runnable queue service | ✅                | ❌ (UI only) | ❌ no queues                     | ❌ snippets          |
-| Separate API + worker processes    | ✅                | —            | ❌                               | partial              |
-| Graceful drain + readiness flip    | ✅                | —            | rarely                           | snippet              |
-| Producer vs worker Redis settings  | ✅                | —            | —                                | documented           |
-| Idempotent enqueue                 | ✅                | —            | —                                | documented           |
-| Tested against real Redis in CI    | ✅                | —            | —                                | —                    |
+| Separate API + worker processes    | ✅                | n/a          | ❌                               | partial              |
+| Graceful drain + readiness flip    | ✅                | n/a          | rarely                           | snippet              |
+| Producer vs worker Redis settings  | ✅                | n/a          | no                               | documented           |
+| Idempotent enqueue                 | ✅                | n/a          | no                               | documented           |
+| Tested against real Redis in CI    | ✅                | n/a          | no                               | no                   |
 
 Bull Board pairs well with this: mount it in `src/app.ts` if you want a UI (a `--dashboard` flag is on the roadmap).
 

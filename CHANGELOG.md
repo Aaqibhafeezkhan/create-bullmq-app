@@ -1,5 +1,12 @@
 # create-bullmq-app
 
+## 0.2.4
+
+### Patch Changes
+
+- Generated projects now ship current dependencies: BullMQ 6.7.8, ioredis 6, ESLint 10, typescript-eslint 8.73 and eslint-plugin-bullmq 0.1.3, with a regenerated lockfile that has a single copy of ioredis.
+- README: the comparison table no longer uses dashes for empty cells.
+
 ## 0.2.3
 
 ### Patch Changes
